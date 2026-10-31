@@ -10,8 +10,9 @@ Ethernet card for its BMS slot, and plenty of them are sold second-hand. If the 
 slave** on its BMS port, mbproxy can take over the card's serial line.
 
 > **Status:** has run in production since October 2026 on one pCOWeb (ARM720T, firmware 1.4.10) in a
-> Waterkotte heat pump ([example](examples/waterkotte-wwpr/)). Other card revisions and firmware versions are
-> untested. Reports are welcome.
+> Waterkotte heat pump ([example](examples/waterkotte-wwpr/), Home Assistant integration:
+> [ha-waterkotte-wwpr](https://github.com/irockel/ha-waterkotte-wwpr)). Other card revisions and firmware versions
+> are untested. Reports are welcome.
 
 ## Why
 

@@ -12,4 +12,5 @@ Carel pCO (firmware 01.05.04, BIOS 6.31), second-hand pCOWeb in "serial card 1" 
 | [commcfg](commcfg) | the card's pcod settings (Modbus Extended, limits) – only needed while pcod runs |
 | [mbproxy.conf](mbproxy.conf) | mbproxy options incl. the write allowlist |
 
-The register map and the Home Assistant integration are kept in a separate project.
+The register map and the Home Assistant integration (YAML package + dashboard) are in
+[ha-waterkotte-wwpr](https://github.com/irockel/ha-waterkotte-wwpr).
