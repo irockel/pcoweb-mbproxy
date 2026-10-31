@@ -14,16 +14,43 @@ of this applies whether or not you use mbproxy.
 | Serial | `/dev/ttyAM0` to the pCO's BMS port, owned by `pcod` |
 | Clock | no RTC: the clock starts at 1970 after every boot |
 
-Web admin, FTP and Telnet use the **Carel default credentials** from the pCOWeb manual. Change them.
+## Default users and passwords
+
+Hardly anybody changes them, so a used card most likely still has the Carel defaults (password = `f` + user):
+
+| User | Password | Used for |
+|---|---|---|
+| `root` | `froot` | Telnet and FTP (root shell, full access) |
+| `httpadmin` | `fhttpadmin` | web admin pages (`/config/adminpage.html`) |
+| `carel` | `fcarel` | further account with a shell |
+| `guest` | `fguest` | further account with a shell |
+
+The passwords are kept in plain text in `/usr/flashdisk/etc/sysconfig/userspwd`. Anybody who can reach the card
+can log in as root, so change them, or at least keep the card in a network segment that only your home
+automation can reach.
 
 ## Firmware
 
-The reference card runs firmware **1.4.10**, the last 1.4.x release, installed following the Carel knowledge
-base. Carel describes a **new Modbus layout** for 1.5.x. If your controller and your clients rely on the 1.4.x
-register mapping, do not update to 1.5.x. mbproxy itself has not been tried on 1.5.x: the plugin hook, the
-watchdog interface and the start scripts it relies on may differ there.
+The reference card runs firmware **1.4.10**, the last 1.4.x release. Carel describes a **new Modbus layout** for
+1.5.x. If your controller and your clients rely on the 1.4.x register mapping, do not update to 1.5.x. mbproxy
+itself has not been tried on 1.5.x: the plugin hook, the watchdog interface and the start scripts it relies on
+may differ there.
 
-<!-- TODO: describe the firmware update procedure (where to get 1.4.10, how it is flashed) -->
+On the reference card the update was **required**: the firmware it came with did not offer the Modbus settings
+(protocol, Modbus Extended limits, see below).
+
+How the reference card was updated:
+
+1. Register at the Carel knowledge base, [ksa.carel.com](https://ksa.carel.com), where the pCOWeb community
+   offers the firmware for download.
+2. Install both parts of the firmware, **"A"** and **"B"**, through the card's web interface.
+
+A used card often carries a firmware customized by the equipment manufacturer it came from. **The update
+replaces it with Carel's standard firmware, and the manufacturer's customizations are gone.** The manufacturer
+may also have registered its own plugins; they are listed in the card's plugin settings. Back them up first,
+e.g. by copying them off the card's flash via FTP. Losing all this does not matter for a card taken from a
+different kind of unit, as the reference card was (it came from an Italian air conditioner), but think twice
+before updating a card that is meant to keep working with its original equipment.
 
 ## Controller and card must agree
 

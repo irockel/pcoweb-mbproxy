@@ -162,7 +162,8 @@ old cross toolchain, mbproxy is built **freestanding** with a current `arm-none-
 
 ## Security
 
-The pCOWeb has no protection of its own: HTTP, FTP and Telnet use well-known Carel default credentials, and
+The pCOWeb has no protection of its own: HTTP, FTP and Telnet use well-known Carel default credentials
+([list](docs/pcoweb-card.md#default-users-and-passwords)), and
 Modbus TCP has no authentication at all. Change the passwords and keep the card in a network segment that only
 your home automation can reach. mbproxy's write allowlist limits what a client can change on the controller; it
 does not replace network isolation.
