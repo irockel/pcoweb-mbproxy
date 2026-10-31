@@ -1,0 +1,129 @@
+#!/bin/bash
+# mbproxy plugin for the Carel pCOWeb: replaces pcod + tcpmodbus by mbproxy (see README).
+#
+# /etc/init.d/userscript (S99userscript) runs this with "start" at boot, after pcod and tcpmodbus.
+#   S50mbproxy start    take over from pcod after GRACE seconds (supervisor runs in the background)
+#   S50mbproxy stop     stop mbproxy and its supervisor, start pcod + tcpmodbus again
+#   S50mbproxy status
+#   (always start pcod detached like "stop" does: started from a telnet session it dies when the session ends)
+#
+# Safety:
+#   - no takeover without /usr/flashdisk/mbproxy/mbproxy.conf (it holds the options for the controller)
+#   - kill switch: touch /usr/flashdisk/mbproxy/disable   (checked before the takeover and before every restart)
+#   - GRACE seconds with pcod after every boot, so telnet/FTP always have a window to set the kill switch
+#   - mbproxy is restarted when it exits; 3 exits within STABLE_S each -> back to pcod
+#   - a boot counts as failed until mbproxy has run STABLE_S; after MAX_BOOTS failed boots in a row the card
+#     stays with pcod (rm /usr/flashdisk/mbproxy/bootcount to try again)
+#   - the watchdog is fed before every (re)start; while mbproxy runs, mbproxy feeds it
+
+D=/usr/flashdisk/mbproxy
+PIDFILE=/tmp/mbproxy-supervisor.pid
+LOG=/tmp/mbproxy-supervisor.log
+GRACE=60
+STABLE_S=600
+MAX_BOOTS=3
+MBPROXY_ARGS=
+[ -f $D/mbproxy.conf ] && . $D/mbproxy.conf
+
+uptime_s() { local up rest; read up rest < /proc/uptime; echo ${up%%.*}; }
+log() { echo "$(uptime_s) $*" >> $LOG; }
+feed() { echo pwdog > /proc/hwio; }
+
+# a leftover mbproxy (e.g. stopped: this old bash returns from a stopped child as if it had exited)
+# would keep port 502 and the serial line
+kill_leftover() { kill -9 $(pidof mbproxy) 2> /dev/null; }
+
+start_stock() {
+	kill_leftover
+	pidof pcod > /dev/null || /etc/rc.d/rc2.d/S91pcod start > /dev/null 2>&1
+	# tcpmodbus cannot bind port 502 while the old connections are in TIME_WAIT (60 s): retry in the background
+	(
+		for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24; do
+			pidof tcpmodbus > /dev/null && exit 0
+			/etc/rc.d/rc2.d/S98modbustcp start > /dev/null 2>&1
+			sleep 5
+		done
+		log "tcpmodbus did not start"
+	) < /dev/null > /dev/null 2>&1 &
+}
+
+supervise() {
+	echo $$ > $PIDFILE
+	sleep $GRACE
+	if [ -f $D/disable ]; then
+		log "disabled by $D/disable, staying with pcod"
+		rm -f $PIDFILE
+		exit 0
+	fi
+	if [ ! -f $D/mbproxy.conf ]; then
+		log "no $D/mbproxy.conf, staying with pcod"
+		rm -f $PIDFILE
+		exit 0
+	fi
+	boots=$(cat $D/bootcount 2> /dev/null)
+	boots=${boots:-0}
+	if [ "$boots" -ge $MAX_BOOTS ]; then
+		log "$boots boots without a stable run, staying with pcod (rm $D/bootcount to retry)"
+		rm -f $PIDFILE
+		exit 0
+	fi
+	echo $((boots + 1)) > $D/bootcount
+	log "taking over from pcod (attempt $((boots + 1)) of $MAX_BOOTS), args: $MBPROXY_ARGS"
+	( sleep $STABLE_S; pidof mbproxy > /dev/null && echo 0 > $D/bootcount ) &
+	kill $(pidof tcpmodbus) 2> /dev/null
+	kill $(pidof pcod) 2> /dev/null
+	fails=0
+	while [ ! -f $D/disable ]; do
+		kill_leftover
+		feed
+		t0=$(uptime_s)
+		$D/mbproxy $MBPROXY_ARGS -l /tmp/mbproxy.log -S /tmp/mbproxy.stat
+		rc=$?
+		feed
+		ran=$(($(uptime_s) - t0))
+		log "mbproxy exited rc=$rc after ${ran}s"
+		if [ $ran -ge $STABLE_S ]; then fails=0; else fails=$((fails + 1)); fi
+		[ $fails -ge 3 ] && break
+		sleep 1
+	done
+	log "falling back to pcod"
+	start_stock
+	rm -f $PIDFILE
+}
+
+case "$1" in
+start)
+	if [ -f $PIDFILE ] && kill -0 $(cat $PIDFILE) 2> /dev/null; then
+		echo "mbproxy: supervisor already running"
+		exit 0
+	fi
+	( $0 supervise < /dev/null > /dev/null 2>&1 & )
+	echo "mbproxy: taking over from pcod in ${GRACE}s"
+	;;
+supervise)
+	supervise
+	;;
+stop)
+	[ -f $PIDFILE ] && kill $(cat $PIDFILE) 2> /dev/null
+	rm -f $PIDFILE
+	# detached: a pcod started from a telnet session dies with it (SIGHUP), then the watchdog reboots the card
+	( $0 stock < /dev/null > /dev/null 2>&1 & )
+	echo "mbproxy: stopped, pcod + tcpmodbus are started in the background"
+	;;
+stock)
+	kill_leftover
+	feed
+	log "stopped, starting pcod"
+	start_stock
+	;;
+status)
+	echo "supervisor: $(cat $PIDFILE 2> /dev/null)  mbproxy: $(pidof mbproxy)  pcod: $(pidof pcod)  tcpmodbus: $(pidof tcpmodbus)"
+	echo "bootcount: $(cat $D/bootcount 2> /dev/null)  disable: $([ -f $D/disable ] && echo yes || echo no)"
+	cat $LOG 2> /dev/null
+	cat /tmp/mbproxy.stat 2> /dev/null
+	;;
+*)
+	echo "usage: $0 {start|stop|status}"
+	exit 1
+	;;
+esac

@@ -1,0 +1,9 @@
+parity=n
+speed=19200
+data=8
+stop=1
+proto=30
+modbus_slave=32
+max_d=0
+max_a=181
+max_i=0
