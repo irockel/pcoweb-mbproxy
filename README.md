@@ -47,6 +47,9 @@ Measured on the reference controller: answers in 20–240 ms (avg 107 ms) with m
   and parity.
 - A build machine with `arm-none-eabi-gcc` (e.g. Homebrew `arm-none-eabi-gcc`, Debian/Ubuntu
   `gcc-arm-none-eabi`), `make`, a host C compiler and Python 3. No libc for ARM is needed.
+  Without a toolchain: download `mbproxy` from the
+  [releases](https://github.com/irockel/pcoweb-mbproxy/releases), check it against `SHA256SUMS` and put it at
+  `src/build/mbproxy`, where the tools expect it.
 
 ## Quick start
 
